@@ -5,11 +5,18 @@ Ollama AI Functions
 - evaluateAnswers(role, answers)
 ========================================
 */
+import 'dotenv/config';
+import { Ollama } from 'ollama';
 
-const OLLAMA_URL = "http://localhost:11434/api/generate";
+// Initialize Ollama client for Ollama Cloud
+const client = new Ollama({
+  host: "https://ollama.com",
+  headers: {
+    'Authorization': 'Bearer ' + process.env.OLLAMA_API_KEY
+  }
+});
 
-// Change model if needed
-const MODEL = "llama3";
+const MODEL = "gpt-oss:120b";
 
 /*
 ========================================
@@ -17,25 +24,22 @@ Helper: Call Ollama API
 ========================================
 */
 async function callOllama(prompt) {
-  const response = await fetch(OLLAMA_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  try {
+    const response = await client.chat({
       model: MODEL,
-      prompt,
+      messages: [{ role: 'user', content: prompt }],
       stream: false,
-    }),
-  });
+    });
+    
+    if (!response || !response.message || !response.message.content) {
+      throw new Error("Invalid response format from Ollama Cloud");
+    }
 
-  const data = await response.json();
-
-  if (!data.response) {
-    throw new Error("No response from Ollama");
+    return response.message.content.trim();
+  } catch (error) {
+    console.error("Error communicating with Ollama Cloud:", error.message);
+    throw error;
   }
-
-  return data.response.trim();
 }
 
 /*
